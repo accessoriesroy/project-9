@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2P লাইভ ক্লাস ও ফাইল শেয়ারিং</title>
+    <!-- PeerJS লাইব্রেরি P2P কানেকশনের জন্য -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body { font-family: 'SolaimanLipi', Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 10px; text-align: center; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .box { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background: #fafafa; }
+        input, button { padding: 10px; font-size: 16px; margin: 5px; border-radius: 5px; border: 1px solid #ccc; }
+        button { background: #4CAF50; color: white; cursor: pointer; border: none; }
+        button:hover { background: #45a049; }
+        
+        /* ভিডিও লেআউট স্টাইল */
+        #video-container { 
+            position: relative; 
+            width: 100%; 
+            height: 400px; 
+            background: black; 
+            border-radius: 8px; 
+            overflow: hidden; 
+            margin-bottom: 10px;
+        }
+        #remoteVideo { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+        }
+        #localVideo { 
+            position: absolute; 
+            bottom: 15px; 
+            right: 15px; 
+            width: 110px; 
+            height: 140px; 
+            object-fit: cover; 
+            border: 2px solid white; 
+            border-radius: 6px; 
+            background: #222;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        }
+
+        /* কন্ট্রোল বাটন স্টাইল */
+        .controls {
+            margin: 10px 0;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        .btn-control {
+            background-color: #333;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            border: none;
+            font-size: 14px;
+        }
+        .btn-control.off {
+            background-color: #d9534f; /* লাল রং বুঝাবে অফ আছে */
+        }
+        .btn-end {
+            background-color: #d9534f;
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>শিক্ষক ও ছাত্রের পি টু পি লাইভ ক্লাস</h2>
+
+    <!-- কানেকশন সেকশন -->
+    <div id="setup-section" class="box">
+        <h3>আপনার ৪ সংখ্যার কোড তৈরি করুন অথবা কানেক্ট করুন</h3>
+        <p>আপনার আইডি (কোড): <span id="my-peer-id" style="font-weight: bold; color: blue;">জেনারেট হচ্ছে...</span></p>
+        
+        <hr>
+        <input type="text" id="target-id" placeholder="৪ সংখ্যার কোড লিখুন" maxlength="4">
+        <button onclick="connectToPeer()">কল করুন / কানেক্ট করুন</button>
+    </div>
+
+    <!-- লাইভ ভিডিও সেকশন -->
+    <div id="call-section" class="box hidden">
+        <div id="video-container">
+            <video id="remoteVideo" autoplay playsinline></video>
+            <video id="localVideo" autoplay muted playsinline></video>
+        </div>
+
+        <!-- আলাদা অডিও ও ভিডিও মিউট বাটন -->
+        <div class="controls">
+            <button id="audioBtn" class="btn-control" onclick="toggleAudio()">🎤 অডিও মিউট</button>
+            <button id="videoBtn" class="btn-control" onclick="toggleVideo()">📹 ভিডিও বন্ধ</button>
+        </div>
+
+        <button class="btn-end" onclick="endCall()">কল কাটুন</button>
+        
+        <hr>
+        <h4>নোটস বা ফাইল পাঠান (PDF, MP3, Image, Video)</h4>
+        <input type="file" id="fileInput">
+        <button onclick="sendFile()">ফাইল পাঠান</button>
+        <p id="file-status"></p>
+    </div>
+</div>
+
+<script>
+    let peer;
+    let myId;
+    let conn;
+    let localStream;
+    let currentCall;
+
+    function generateRandomCode() {
+        return Math.floor(1000 + Math.random() * 9000).toString();
+    }
+
+    function initPeer() {
+        let savedId = localStorage.getItem('p2p_saved_id');
+        myId = savedId ? savedId : generateRandomCode();
+        localStorage.setItem('p2p_saved_id', myId);
+
+        document.getElementById('my-peer-id').innerText = myId;
+
+        peer = new Peer(myId);
+
+        peer.on('open', (id) => {
+            console.log('My peer ID is: ' + id);
+        });
+
+        peer.on('call', (call) => {
+            navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((stream) => {
+                localStream = stream;
+                document.getElementById('localVideo').srcObject = stream;
+                
+                call.answer(stream);
+                call.on('stream', (remoteStream) => {
+                    document.getElementById('remoteVideo').srcObject = remoteStream;
+                    showCallSection();
+                });
+                currentCall = call;
+            }).catch(err => alert("ক্যামেরা বা মাইক্রোফোন পারমিশন প্রয়োজন!"));
+        });
+
+        peer.on('connection', (connection) => {
+            conn = connection;
+            setupDataChannel();
+        });
+    }
+
+    function connectToPeer() {
+        let targetId = document.getElementById('target-id').value;
+        if (!targetId || targetId.length !== 4) {
+            alert("সঠিক ৪ সংখ্যার কোড দিন!");
+            return;
+        }
+
+        conn = peer.connect(targetId);
+        setupDataChannel();
+
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((stream) => {
+            localStream = stream;
+            document.getElementById('localVideo').srcObject = stream;
+
+            let call = peer.call(targetId, stream);
+            call.on('stream', (remoteStream) => {
+                document.getElementById('remoteVideo').srcObject = remoteStream;
+                showCallSection();
+            });
+            currentCall = call;
+        }).catch(err => alert("ক্যামেরা বা মাইক্রোফোন পারমিশন প্রয়োজন!"));
+    }
+
+    // অডিও মিউট/আনমিউট করার ফাংশন
+    function toggleAudio() {
+        if (!localStream) return;
+        let audioTrack = localStream.getAudioTracks()[0];
+        if (audioTrack) {
+            audioTrack.enabled = !audioTrack.enabled;
+            let btn = document.getElementById('audioBtn');
+            if (audioTrack.enabled) {
+                btn.innerText = "🎤 অডিও মিউট";
+                btn.classList.remove('off');
+            } else {
+                btn.innerText = "🔇 অডিও আনমিউট";
+                btn.classList.add('off');
+            }
+        }
+    }
+
+    // ভিডিও বন্ধ/চালু করার ফাংশন
+    function toggleVideo() {
+        if (!localStream) return;
+        let videoTrack = localStream.getVideoTracks()[0];
+        if (videoTrack) {
+            videoTrack.enabled = !videoTrack.enabled;
+            let btn = document.getElementById('videoBtn');
+            if (videoTrack.enabled) {
+                btn.innerText = "📹 ভিডিও বন্ধ";
+                btn.classList.remove('off');
+            } else {
+                btn.innerText = "📷 ভিডিও চালু";
+                btn.classList.add('off');
+            }
+        }
+    }
+
+    function setupDataChannel() {
+        conn.on('open', () => {
+            console.log("ডাটাকানেকশন সফল!");
+            showCallSection();
+        });
+
+        conn.on('data', (data) => {
+            if (data.file) {
+                let blob = new Blob([data.buffer], { type: data.fileType });
+                let url = URL.createObjectURL(blob);
+                let a = document.createElement('a');
+                a.href = url;
+                a.download = data.fileName;
+                a.textContent = `নতুন ফাইল এসেছে: ${data.fileName} (ডাউনলোড করুন)`;
+                a.style.display = "block";
+                document.getElementById('call-section').appendChild(a);
+                alert("একটি নতুন ফাইল বা নোটস পাওয়া গেছে!");
+            }
+        });
+    }
+
+    function sendFile() {
+        let fileInput = document.getElementById('fileInput');
+        if (fileInput.files.length === 0) {
+            alert("দয়া করে একটি ফাইল সিলেক্ট করুন!");
+            return;
+        }
+
+        let file = fileInput.files[0];
+        let reader = new FileReader();
+        
+        reader.onload = function(evt) {
+            if (conn && conn.open) {
+                conn.send({
+                    file: true,
+                    fileName: file.name,
+                    fileType: file.type,
+                    buffer: evt.target.result
+                });
+                document.getElementById('file-status').innerText = "ফাইল সফলভাবে পাঠানো হয়েছে!";
+            } else {
+                alert("কানেকশন পাওয়া যায়নি!");
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function showCallSection() {
+        document.getElementById('setup-section').classList.add('hidden');
+        document.getElementById('call-section').classList.remove('hidden');
+    }
+
+    function endCall() {
+        if (currentCall) currentCall.close();
+        if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+        }
+        document.getElementById('setup-section').classList.remove('hidden');
+        document.getElementById('call-section').classList.add('hidden');
+    }
+
+    window.onload = initPeer;
+</script>
+
+</body>
+</html>
