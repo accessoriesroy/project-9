@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P2P লাইভ ক্লাস ও ফাইল শেয়ারিং</title>
+    <title> Accessories Roy Live Class Pro </title>
     <!-- PeerJS লাইব্রেরি P2P কানেকশনের জন্য -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
@@ -275,5 +275,58 @@
     window.onload = initPeer;
 </script>
 
+
+<!-- স্টাইল বা ডিজাইন কোড -->
+<style>
+    .contact-buttons-container {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .custom-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 18px;
+        border-radius: 50px;
+        color: white;
+        text-decoration: none;
+        font-family: 'SolaimanLipi', Arial, sans-serif;
+        font-size: 15px;
+        font-weight: bold;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        transition: 0.3s;
+    }
+    .btn-call {
+        background-color: #28a745; /* সবুজ রঙ (কল করার জন্য) */
+    }
+    .btn-call:hover {
+        background-color: #218838;
+    }
+    .btn-web {
+        background-color: #007bff; /* নীল রঙ (ওয়েবসাইট দেখার জন্য) */
+    }
+    .btn-web:hover {
+        background-color: #0056b3;
+    }
+</style>
+
+<!-- বাটনগুলোর এইচটিএমএল কোড -->
+<div class="contact-buttons-container">
+    <!-- ফোন কল বাটন -->
+    <a href="+919856419747" class="custom-btn btn-call">
+        📞 কল করুন
+    </a>
+    
+    <!-- ওয়েবসাইট ভিজিট বাটন -->
+    <a href="https://accessoriesroy.in" target="_blank" class="custom-btn btn-web">
+        🌐 ওয়েবসাইট ভিজিট
+    </a>
+</div>
+    
 </body>
 </html>
